@@ -1,7 +1,5 @@
-<h1>🧾 MadeProof Demo — Upload, OCR & Verify</h1>
-
 "use client";
-import React, { useEffect, useState } from "react";
+import React, { useState, useEffect } from "react";
 
 type UploadResp = {
   ok: boolean;
@@ -28,7 +26,14 @@ type AnalyseResp = {
 
 function Chip({ children }: { children: React.ReactNode }) {
   return (
-    <span style={{ padding: "2px 8px", borderRadius: 999, background: "#eee", fontSize: 12 }}>
+    <span
+      style={{
+        padding: "2px 8px",
+        borderRadius: 999,
+        background: "#eee",
+        fontSize: 12,
+      }}
+    >
       {children}
     </span>
   );
@@ -36,34 +41,36 @@ function Chip({ children }: { children: React.ReactNode }) {
 
 export default function DemoPage() {
   const [file, setFile] = useState<File | null>(null);
-  const [status, setStatus] = useState<string>("");
+  const [status, setStatus] = useState("");
   const [out, setOut] = useState<UploadResp | null>(null);
   const [analysis, setAnalysis] = useState<AnalyseResp | null>(null);
-  const [bubble, setBubble] = useState<string>(
-    "G’day — I’m ProofMate. Drop a doc and I’ll show you what I can (and can’t) see."
-  );
-
-  // OCR (client-side) state
   const [ocrBusy, setOcrBusy] = useState(false);
   const [ocrText, setOcrText] = useState("");
+  const [bubble, setBubble] = useState(
+    "G’day — I’m ProofMate. Drop a doc and I’ll show you what I can (and can’t) see."
+  );
 
   useEffect(() => {
     if (!out?.ok) return;
     (async () => {
-      setBubble("Reading what I can, then I’ll score coverage — no magic, just honest heuristics.");
+      setBubble("Reading what I can, then I’ll score coverage.");
       const res = await fetch("/api/analyse", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text: out.text, filename: out.name, mime: out.mime }),
+        body: JSON.stringify({
+          text: out.text,
+          filename: out.name,
+          mime: out.mime,
+        }),
       });
       const j = (await res.json()) as AnalyseResp;
       setAnalysis(j);
       setBubble(
         j.band === "green"
-          ? "Looks solid. I’d still sanity-check dates and issuer."
+          ? "Looks solid — check dates & issuer to be sure."
           : j.band === "amber"
-          ? "Close. A couple of gaps — see the warnings."
-          : "Plenty to tighten. I’ve listed the next actions."
+          ? "Close. A couple of gaps — see warnings."
+          : "Needs work — see next actions."
       );
     })();
   }, [out?.sha256]);
@@ -74,7 +81,7 @@ export default function DemoPage() {
     setOut(null);
     setAnalysis(null);
     setOcrText("");
-    setBubble("Uploading to memory only. I’ll extract, hash, then delete and give you a signed receipt.");
+    setBubble("Uploading in-memory only. Extracting + verifying.");
     try {
       const fd = new FormData();
       fd.append("file", file);
@@ -83,10 +90,10 @@ export default function DemoPage() {
       if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
       setOut(data);
       setStatus("✅ Done");
-      setBubble("All processed — buffer wiped, temp file shredded. Here’s what I could read and your deletion receipt.");
+      setBubble("Processed + securely deleted. Here’s what I found.");
     } catch (e: any) {
       setStatus("❌ " + (e.message || "Upload failed"));
-      setBubble("Couldn’t process that one. Smaller file or a clearer PDF usually does the trick.");
+      setBubble("Couldn’t process that one. Try a smaller or clearer file.");
     }
   }
 
@@ -95,7 +102,6 @@ export default function DemoPage() {
     setOcrBusy(true);
     setOcrText("");
     try {
-      // Render PDF page 1 to a canvas using pdf.js (ESM)
       const pdfjs: any = await import("pdfjs-dist/build/pdf");
       pdfjs.GlobalWorkerOptions.workerSrc = new URL(
         "pdfjs-dist/build/pdf.worker.mjs",
@@ -105,7 +111,7 @@ export default function DemoPage() {
       const ab = await f.arrayBuffer();
       const pdf = await pdfjs.getDocument({ data: ab }).promise;
       const page = await pdf.getPage(1);
-      const viewport = page.getViewport({ scale: 2.0 }); // 2x for clearer OCR
+      const viewport = page.getViewport({ scale: 2.0 });
 
       const canvas = document.createElement("canvas");
       const ctx = canvas.getContext("2d")!;
@@ -113,7 +119,6 @@ export default function DemoPage() {
       canvas.height = viewport.height;
       await page.render({ canvasContext: ctx, viewport }).promise;
 
-      // OCR the bitmap with Tesseract.js
       const { createWorker } = await import("tesseract.js");
       const worker = await createWorker();
       await worker.loadLanguage("eng");
@@ -122,17 +127,19 @@ export default function DemoPage() {
       await worker.terminate();
 
       setOcrText((data.text || "").trim() || "(no OCR text found)");
-      setBubble("Pulled text from the drawing. Dimensions and labels show up better via OCR.");
+      setBubble("Extracted drawing text — dimensions + labels captured.");
     } catch (e: any) {
       setOcrText("OCR failed: " + (e.message || e));
-      setBubble("That drawing didn’t OCR nicely. Higher-res source usually helps.");
+      setBubble("That drawing didn’t OCR cleanly — higher-res usually helps.");
     } finally {
       setOcrBusy(false);
     }
   }
 
   function download(name: string, json: any) {
-    const blob = new Blob([JSON.stringify(json, null, 2)], { type: "application/json" });
+    const blob = new Blob([JSON.stringify(json, null, 2)], {
+      type: "application/json",
+    });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
@@ -142,8 +149,15 @@ export default function DemoPage() {
   }
 
   return (
-    <main style={{ maxWidth: 860, margin: "60px auto", padding: "0 16px", fontFamily: "system-ui" }}>
-      <h1>🧾 MadeProof Demo — Upload & Verify</h1>
+    <main
+      style={{
+        maxWidth: 860,
+        margin: "60px auto",
+        padding: "0 16px",
+        fontFamily: "system-ui",
+      }}
+    >
+      <h1>🧾 MadeProof Demo — Upload, OCR & Verify</h1>
       <p>Upload any small PDF, DOCX, or image to see extraction + deletion receipt in action.</p>
 
       {/* ProofMate bubble */}
@@ -175,13 +189,21 @@ export default function DemoPage() {
         <button
           onClick={handleUpload}
           disabled={!file}
-          style={{ marginLeft: 8, padding: "6px 12px", background: "#111", color: "#fff", borderRadius: 6 }}
+          style={{
+            marginLeft: 8,
+            padding: "6px 12px",
+            background: "#111",
+            color: "#fff",
+            borderRadius: 6,
+          }}
         >
           Upload
         </button>
         <button
           onClick={() =>
-            file && file.name.toLowerCase().endsWith(".pdf") && ocrFirstPageFromPdfFile(file)
+            file &&
+            file.name.toLowerCase().endsWith(".pdf") &&
+            ocrFirstPageFromPdfFile(file)
           }
           disabled={!file || !file.name.toLowerCase().endsWith(".pdf") || ocrBusy}
           style={{
@@ -198,7 +220,6 @@ export default function DemoPage() {
 
       {status && <p style={{ marginTop: 12 }}>{status}</p>}
 
-      {/* Extracted text */}
       {out?.ok && (
         <section
           style={{
@@ -209,21 +230,29 @@ export default function DemoPage() {
             borderRadius: 10,
           }}
         >
-          <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 8 }}>
+          <div
+            style={{
+              display: "flex",
+              gap: 8,
+              alignItems: "center",
+              marginBottom: 8,
+            }}
+          >
             <Chip>{out.name}</Chip>
             <Chip>{out.mime}</Chip>
             <Chip>SHA-256: {out.sha256.slice(0, 12)}…</Chip>
           </div>
           <details open>
-            <summary style={{ cursor: "pointer" }}>
+            <summary>
               <b>Extracted text</b> (first 10k chars)
             </summary>
-            <pre style={{ whiteSpace: "pre-wrap" }}>{out.text || "(no text extracted)"}</pre>
+            <pre style={{ whiteSpace: "pre-wrap" }}>
+              {out.text || "(no text extracted)"}
+            </pre>
           </details>
         </section>
       )}
 
-      {/* OCR text (page 1) */}
       {ocrText && (
         <section
           style={{
@@ -239,12 +268,18 @@ export default function DemoPage() {
         </section>
       )}
 
-      {/* Analysis */}
       {analysis?.ok && (
-        <section style={{ marginTop: 16, padding: 16, border: "1px solid #e8e8e8", borderRadius: 10 }}>
-          <h3 style={{ margin: "4px 0" }}>Coverage check</h3>
-          <p style={{ margin: "6px 0" }}>
-            Score: <b>{analysis.score}</b> / 100 &nbsp;
+        <section
+          style={{
+            marginTop: 16,
+            padding: 16,
+            border: "1px solid #e8e8e8",
+            borderRadius: 10,
+          }}
+        >
+          <h3>Coverage check</h3>
+          <p>
+            Score: <b>{analysis.score}</b>/100 &nbsp;
             <Chip>{analysis.band.toUpperCase()}</Chip>
           </p>
           {analysis.warnings.length > 0 && (
@@ -270,21 +305,31 @@ export default function DemoPage() {
         </section>
       )}
 
-      {/* Receipt */}
       {out?.ok && (
-        <section style={{ marginTop: 16, padding: 16, border: "1px solid #e8e8e8", borderRadius: 10 }}>
-          <h3 style={{ margin: "4px 0" }}>Deletion receipt</h3>
-          <p style={{ margin: "6px 0" }}>
+        <section
+          style={{
+            marginTop: 16,
+            padding: 16,
+            border: "1px solid #e8e8e8",
+            borderRadius: 10,
+          }}
+        >
+          <h3>Deletion receipt</h3>
+          <p>
             Processed: <code>{out.started_at}</code> &nbsp; • &nbsp; Deleted:{" "}
             <code>{out.deleted_at}</code>
           </p>
           <details>
             <summary>Show receipt JSON</summary>
-            <pre style={{ whiteSpace: "pre-wrap" }}>{JSON.stringify(out.deletion_receipt, null, 2)}</pre>
+            <pre style={{ whiteSpace: "pre-wrap" }}>
+              {JSON.stringify(out.deletion_receipt, null, 2)}
+            </pre>
           </details>
           <details>
             <summary>Signature (base64)</summary>
-            <code style={{ wordBreak: "break-all" }}>{out.signature_base64}</code>
+            <code style={{ wordBreak: "break-all" }}>
+              {out.signature_base64}
+            </code>
           </details>
           <p style={{ fontSize: 12, opacity: 0.8 }}>
             Verify with public key at{" "}
@@ -295,7 +340,7 @@ export default function DemoPage() {
           </p>
           <button
             onClick={() =>
-              download(`MadeProof-Deletion-Receipt-${out.sha256.slice(0, 12)}.json`, {
+              download(`MadeProof-Receipt-${out.sha256.slice(0, 12)}.json`, {
                 receipt: out.deletion_receipt,
                 signature_base64: out.signature_base64,
               })
