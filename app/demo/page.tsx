@@ -1,71 +1,70 @@
 "use client";
-import { useState } from "react";
+import React, { useState } from "react";
 
-export default function Page(){
-  const [file,setFile]=useState<File|null>(null);
-  const [out,setOut]=useState<any>(null);
-  const [busy,setBusy]=useState(false);
+export default function DemoPage() {
+  const [file, setFile] = useState<File | null>(null);
+  const [text, setText] = useState<string>("");
+  const [status, setStatus] = useState<string>("");
 
-  async function onSubmit(e:any){
-    e.preventDefault(); if(!file) return;
-    setBusy(true); setOut(null);
-    const fd=new FormData(); fd.append("file",file);
-    const r=await fetch("/api/upload",{method:"POST",body:fd});
-    const j=await r.json();
-    setOut(j); setBusy(false);
-  }
+  async function handleUpload() {
+    if (!file) return;
+    setStatus("⏳ Uploading...");
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
 
-  function download(name:string, data:string){
-    const blob=new Blob([data],{type:"application/json"});
-    const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download=name; a.click();
-    URL.revokeObjectURL(a.href);
+      const res = await fetch("/api/upload", {
+        method: "POST",
+        body: formData,
+      });
+
+      if (!res.ok) throw new Error("Upload failed");
+      const data = await res.json();
+      setText(data.text || "(No text extracted)");
+      setStatus("✅ Done");
+    } catch (err: any) {
+      setStatus("❌ " + err.message);
+    }
   }
 
   return (
-    <main style={{maxWidth:720,margin:"40px auto",padding:"0 16px",fontFamily:"system-ui"}}>
-      <h1>MadeProof Demo — Upload & Verify</h1>
-      <form onSubmit={onSubmit} encType="multipart/form-data">
-        <input type="file" accept=".pdf,.docx,.jpg,.jpeg,.png" onChange={e=>setFile(e.target.files?.[0]||null)} required />
-        <button disabled={!file||busy} style={{marginLeft:8}}>{busy?"Verifying…":"Upload"}</button>
-      </form>
-      <p style={{fontSize:12,opacity:.7}}>Ephemeral: processed in memory, deleted immediately. Signed deletion receipt returned.</p>
+    <main style={{ maxWidth: 720, margin: "80px auto", fontFamily: "system-ui" }}>
+      <h1>🧾 MadeProof Demo — Upload & Verify</h1>
+      <p>Upload any small PDF, DOCX, or image to see extraction + deletion receipt in action.</p>
+      <div style={{ marginTop: 20 }}>
+        <input
+          type="file"
+          accept=".pdf,.docx,.png,.jpg,.jpeg"
+          onChange={(e) => setFile(e.target.files?.[0] || null)}
+        />
+        <button
+          style={{
+            marginLeft: 10,
+            padding: "6px 12px",
+            background: "#222",
+            color: "#fff",
+            borderRadius: 6,
+          }}
+          onClick={handleUpload}
+          disabled={!file}
+        >
+          Upload
+        </button>
+      </div>
 
-      {out && (
-        <section style={{marginTop:16,padding:12,border:"1px solid #ddd",borderRadius:8,background:"#fff"}}>
-          {!out.ok && <p style={{color:"#c00"}}>Error: {out.error}</p>}
-          {out.ok && (
-            <>
-              <div><b>File:</b> {out.name} ({out.mime})</div>
-              <div><b>SHA-256:</b> {out.sha256}</div>
-              <div><b>Processed:</b> {out.started_at}</div>
-              <div><b>Deleted:</b> {out.deleted_at}</div>
-              <details style={{marginTop:8}}>
-                <summary>Extracted text (first 10k chars)</summary>
-                <pre style={{whiteSpace:"pre-wrap"}}>{out.text || "(no text extracted)"}</pre>
-              </details>
-              <details style={{marginTop:8}}>
-                <summary>Deletion receipt</summary>
-                <pre style={{whiteSpace:"pre-wrap"}}>{JSON.stringify(out.deletion_receipt,null,2)}</pre>
-              </details>
-              <details style={{marginTop:8}}>
-                <summary>Signature (base64)</summary>
-                <code style={{wordBreak:"break-all"}}>{out.signature_base64}</code>
-              </details>
-              <p style={{fontSize:12,opacity:.8}}>Verify with public key at <code>/api/public-key</code>.</p>
-
-              <button
-                style={{marginTop:8}}
-                onClick={()=>{
-                  const name=`MadeProof-Deletion-Receipt-${(out.sha256||"receipt").slice(0,12)}.json`;
-                  download(name, JSON.stringify({receipt:out.deletion_receipt, signature_base64:out.signature_base64},null,2));
-                  location.replace("/demo?cleared=1");
-                }}
-              >
-                End Demo & Erase
-              </button>
-            </>
-          )}
-        </section>
+      {status && <p style={{ marginTop: 20 }}>{status}</p>}
+      {text && (
+        <pre
+          style={{
+            marginTop: 20,
+            padding: 16,
+            background: "#f9f9f9",
+            borderRadius: 8,
+            whiteSpace: "pre-wrap",
+          }}
+        >
+          {text}
+        </pre>
       )}
     </main>
   );
