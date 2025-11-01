@@ -8,10 +8,15 @@
     "start": "next start -p 3000"
   },
   "dependencies": {
-    "next": "14.2.4",
-    "react": "18.2.0",
-    "react-dom": "18.2.0"
-  },
+  "next": "14.2.4",
+  "react": "18.2.0",
+  "react-dom": "18.2.0",
+  "formidable": "^3.5.1",
+  "pdf-parse": "^1.1.1",
+  "mammoth": "^1.6.0",
+  "tesseract.js": "^5.0.5"
+}
+,
   "devDependencies": {
     "typescript": "^5.3.3",
     "@types/react": "^18.2.66",
