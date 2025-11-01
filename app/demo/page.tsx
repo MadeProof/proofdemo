@@ -1,3 +1,5 @@
+<h1>🧾 MadeProof Demo — Upload, OCR & Verify</h1>
+
 "use client";
 import React, { useEffect, useState } from "react";
 
