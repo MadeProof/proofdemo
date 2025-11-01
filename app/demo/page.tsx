@@ -163,6 +163,7 @@ export default function DemoPage() {
         <div style={{ fontSize: 14, lineHeight: 1.3 }}>{bubble}</div>
       </div>
 
+      {/* Upload & OCR controls */}
       <div style={{ marginTop: 16 }}>
         <input
           type="file"
@@ -177,10 +178,17 @@ export default function DemoPage() {
           Upload
         </button>
         <button
-          onClick={() => file && file.name.toLowerCase().endsWith(".pdf") && ocrFirstPageFromPdfFile(file)}
+          onClick={() =>
+            file && file.name.toLowerCase().endsWith(".pdf") && ocrFirstPageFromPdfFile(file)
+          }
           disabled={!file || !file.name.toLowerCase().endsWith(".pdf") || ocrBusy}
-          style={{ marginLeft: 8, padding: "6px 12px", borderRadius: 6 }}
-          title="OCR the first page of the PDF (good for CAD drawings)"
+          style={{
+            marginLeft: 8,
+            padding: "6px 12px",
+            borderRadius: 6,
+            background: "#444",
+            color: "#fff",
+          }}
         >
           {ocrBusy ? "OCR…" : "OCR drawings (p1)"}
         </button>
@@ -265,7 +273,8 @@ export default function DemoPage() {
         <section style={{ marginTop: 16, padding: 16, border: "1px solid #e8e8e8", borderRadius: 10 }}>
           <h3 style={{ margin: "4px 0" }}>Deletion receipt</h3>
           <p style={{ margin: "6px 0" }}>
-            Processed: <code>{out.started_at}</code> &nbsp; • &nbsp; Deleted: <code>{out.deleted_at}</code>
+            Processed: <code>{out.started_at}</code> &nbsp; • &nbsp; Deleted:{" "}
+            <code>{out.deleted_at}</code>
           </p>
           <details>
             <summary>Show receipt JSON</summary>
@@ -276,7 +285,11 @@ export default function DemoPage() {
             <code style={{ wordBreak: "break-all" }}>{out.signature_base64}</code>
           </details>
           <p style={{ fontSize: 12, opacity: 0.8 }}>
-            Verify with public key at <a href="/api/public-key" target="_blank">/api/public-key</a>.
+            Verify with public key at{" "}
+            <a href="/api/public-key" target="_blank">
+              /api/public-key
+            </a>
+            .
           </p>
           <button
             onClick={() =>
